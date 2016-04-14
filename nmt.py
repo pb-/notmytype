@@ -20,9 +20,8 @@ class Context(object):
     def on_input(self, char):
         self.state.on_input(self, char)
 
-    def set_state(self, new_state):
-        new_state.on_enter(self, self.state)
-        self.state = new_state
+    def set_state(self, state):
+        self.state = state
 
 
 class Mode(object):
@@ -33,10 +32,7 @@ class Mode(object):
     def __init__(self):
         self.offset = 0
         self.errors = 0
-        sys.stdout.write('\x1b[3{}m{:>6}: '.format(self.color, self.label))
-
-    def on_enter(self, context, prev_mode):
-        pass
+        self._show_prompt()
 
     def on_input(self, context, char):
         if not self.offset:
@@ -65,6 +61,9 @@ class Mode(object):
     def _get_stats(self):
         return '{:.2f}s'.format(self.time)
 
+    def _show_prompt(self):
+        sys.stdout.write('\x1b[3{}m{:>6}: '.format(self.color, self.label))
+
 
 class FastMode(Mode):
     label = 'fast'
@@ -75,15 +74,11 @@ class SlowMode(Mode):
     label = 'slow'
     color = COLOR_RED
 
-    def on_enter(self, context, prev_mode):
-        if isinstance(prev_mode, SlowMode):
-            # keep the error count from previous attempt
-            self.errors = prev_mode.errors
-
     def _on_error(self, context):
         sys.stdout.write('\r\n')
         sys.stdout.write('FAIL!\r\n')
-        context.set_state(SlowMode())
+        self.offset = 0
+        self._show_prompt()
 
     def _get_stats(self):
         return None
